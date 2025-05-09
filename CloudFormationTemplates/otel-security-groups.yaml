@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Security Groups for OpenTelemetry EKS project — EKS, Admin, App, and Monitoring
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where the security groups will be created
+
+  VpcCidrBlock:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block of the VPC
+
+Resources:
+
+  ClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access to EKS API server (port 443)
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0   # Consider restricting to your IP for production
+      Tags:
+        - Key: Name
+          Value: otel-demo-cluster-sg
+
+  NodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow EKS worker node communication with control plane and between nodes
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 1025
+          ToPort: 65535
+          SourceSecurityGroupId: !Ref ClusterSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref ClusterSecurityGroup
+        - IpProtocol: -1
+          CidrIp: !Ref VpcCidrBlock
+      Tags:
+        - Key: Name
+          Value: otel-demo-node-sg
+
+  AdminSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EC2 instance for EKS administration (kubectl, eksctl)
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0   # Restrict to your IP range ideally
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: otel-demo-admin-sg
+
+  AppIngressSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow public access to frontend apps (HTTP/HTTPS)
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: otel-demo-app-sg
+
+  MonitoringSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Internal-only Prometheus/Grafana to access K8s services
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 9090
+          ToPort: 9090
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: !Ref VpcCidrBlock
+      Tags:
+        - Key: Name
+          Value: otel-demo-monitoring-sg
+
+Outputs:
+  ClusterSecurityGroupId:
+    Description: Security Group ID for EKS Cluster
+    Value: !Ref ClusterSecurityGroup
+
+  NodeSecurityGroupId:
+    Description: Security Group ID for Worker Nodes
+    Value: !Ref NodeSecurityGroup
+
+  AdminSecurityGroupId:
+    Description: Security Group ID for EC2 Admin Node
+    Value: !Ref AdminSecurityGroup
+
+  AppIngressSecurityGroupId:
+    Description: Security Group ID for HTTP/HTTPS frontend
+    Value: !Ref AppIngressSecurityGroup
+
+  MonitoringSecurityGroupId:
+    Description: Security Group ID for Prometheus/Grafana
+    Value: !Ref MonitoringSecurityGroup
