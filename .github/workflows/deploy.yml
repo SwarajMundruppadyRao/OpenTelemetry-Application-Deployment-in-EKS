@@ -1,0 +1,81 @@
+name: CI/CD for OpenTelemetry Demo
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  EKS_CLUSTER: otel-demo-cluster
+  REGION: us-east-1
+  HELM_RELEASE: otel-demo
+  NAMESPACE: otel-demo
+  REPO: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.REGION }}
+
+    - name: Login to GHCR
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+    - name: Build and push Docker images
+      run: |
+        services=(frontend cartservice checkoutservice currencyservice productcatalogservice recommendationservice emailservice paymentservice shippingservice adservice quote-service fraudservice)
+        for svc in "${services[@]}"; do
+          docker build -t $REPO/$svc ./src/$svc
+          docker push $REPO/$svc
+        done
+
+    - name: Update kubeconfig
+      run: aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+
+    - name: Deploy via Helm
+      run: |
+        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+        helm repo update
+        helm upgrade --install $HELM_RELEASE open-telemetry/opentelemetry-demo \
+          --namespace $NAMESPACE --create-namespace \
+          --set frontend.image=$REPO/frontend \
+          --set cartservice.image=$REPO/cartservice \
+          --set checkoutservice.image=$REPO/checkoutservice \
+          --set currencyservice.image=$REPO/currencyservice \
+          --set productcatalogservice.image=$REPO/productcatalogservice \
+          --set recommendationservice.image=$REPO/recommendationservice \
+          --set emailservice.image=$REPO/emailservice \
+          --set paymentservice.image=$REPO/paymentservice \
+          --set shippingservice.image=$REPO/shippingservice \
+          --set adservice.image=$REPO/adservice \
+          --set quoteservice.image=$REPO/quote-service \
+          --set fraudservice.image=$REPO/fraudservice
+
+    - name: Confirm rollout
+      run: kubectl rollout status deployment $HELM_RELEASE -n $NAMESPACE
+
+  rollback-on-failure:
+    needs: build-and-deploy
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Rollback deployment
+      run: |
+        aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+        helm rollback $HELM_RELEASE 1 -n $NAMESPACE
