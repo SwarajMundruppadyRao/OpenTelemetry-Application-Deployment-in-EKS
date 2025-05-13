@@ -16,7 +16,7 @@ This project demonstrates the end-to-end deployment of the [OpenTelemetry Demo A
 
 ---
 
-## 🚀 Project Phases
+## Project Phases
 
 ### **Phase 1: Environment & Docker-Based Validation**
 - Provisioned EC2 instance on AWS
