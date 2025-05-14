@@ -35,22 +35,23 @@ jobs:
         docker build -t $REPO/frontend:latest ./src/frontend
         docker push $REPO/frontend:latest
 
-    - name: Update kubeconfig
-      run: aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
-
-    - name: Add Helm repo
+    - name: Update kubeconfig and set KUBECONFIG
       run: |
-        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
-        helm repo update
+        aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+        echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+
+    - name: Validate cluster connectivity
+      run: |
+        kubectl get nodes
+        helm version
 
     - name: Deploy frontend via Helm
       run: |
-        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts || true
         helm repo update
         helm upgrade --install $HELM_RELEASE open-telemetry/opentelemetry-demo \
           --namespace $NAMESPACE --create-namespace \
           -f helm/values-prod.yaml
-  
 
     - name: Confirm frontend rollout
       run: |
@@ -69,9 +70,19 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.REGION }}
 
-    - name: Update kubeconfig
-      run: aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+    - name: Update kubeconfig and set KUBECONFIG
+      run: |
+        aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+        echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+
+    - name: Add Helm repo (context needed for rollback)
+      run: |
+        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts || true
+        helm repo update
 
     - name: Rollback frontend Helm release
       run: |
-        helm rollback $HELM_RELEASE 0 -n $NAMESPACE || echo "No previous release to rollback to"
+        echo "Checking Helm history for previous revision..."
+        REV=$(helm history $HELM_RELEASE -n $NAMESPACE | awk 'NR==3{print $1}')
+        echo "Rolling back to revision $REV"
+        helm rollback $HELM_RELEASE $REV -n $NAMESPACE || echo "Rollback failed or no previous revision"
