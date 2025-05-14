@@ -1,0 +1,6 @@
+components:
+  frontend:
+    enabled: true
+    image:
+      repository: ghcr.io/sakethbolla/OpenTelemetry-Application-Deployment-in-EKS/frontend
+      tag: latest

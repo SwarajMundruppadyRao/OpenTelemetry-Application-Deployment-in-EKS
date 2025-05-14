@@ -8,8 +8,8 @@ on:
 env:
   EKS_CLUSTER: otel-demo-cluster
   REGION: us-east-1
-  HELM_RELEASE: otel-demo
-  NAMESPACE: otel-demo
+  HELM_RELEASE: otel-demo-cicd
+  NAMESPACE: otel-demo-helm
   REPO: ghcr.io/${{ github.repository }}
 
 jobs:
@@ -27,16 +27,21 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.REGION }}
 
-    - name: Login to GHCR
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+    - name: Log in to GHCR
+      run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
     - name: Build and push frontend image
       run: |
-        docker build -t $REPO/frontend ./src/frontend
-        docker push $REPO/frontend
+        docker build -t $REPO/frontend:latest ./src/frontend
+        docker push $REPO/frontend:latest
 
     - name: Update kubeconfig
       run: aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+
+    - name: Add Helm repo
+      run: |
+        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+        helm repo update
 
     - name: Deploy frontend via Helm
       run: |
@@ -44,24 +49,29 @@ jobs:
         helm repo update
         helm upgrade --install $HELM_RELEASE open-telemetry/opentelemetry-demo \
           --namespace $NAMESPACE --create-namespace \
-          --set frontend.image=$REPO/frontend
+          -f helm/values-prod.yaml
+  
 
     - name: Confirm frontend rollout
-      run: kubectl rollout status deployment/frontend -n $NAMESPACE
+      run: |
+        kubectl rollout status deployment/frontend -n $NAMESPACE
 
   rollback-if-fails:
     needs: deploy-frontend
     if: failure()
     runs-on: ubuntu-latest
+
     steps:
     - name: Configure AWS
       uses: aws-actions/configure-aws-credentials@v2
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+        aws-region: ${{ env.REGION }}
 
-    - name: Rollback frontend
+    - name: Update kubeconfig
+      run: aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+
+    - name: Rollback frontend Helm release
       run: |
-        aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
-        helm rollback $HELM_RELEASE 1 -n $NAMESPACE
+        helm rollback $HELM_RELEASE 0 -n $NAMESPACE || echo "No previous release to rollback to"
