@@ -35,6 +35,9 @@ jobs:
         docker build -t $REPO/frontend:latest ./src/frontend
         docker push $REPO/frontend:latest
 
+    - name: Debug IAM identity
+      run: aws sts get-caller-identity
+      
     - name: Update kubeconfig and set KUBECONFIG
       run: |
         aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
