@@ -10,7 +10,7 @@ env:
   REGION: us-east-1
   HELM_RELEASE: otel-demo-cicd
   NAMESPACE: otel-demo-helm
-  REPO: ghcr.io/${{ github.repository }}
+  REPO: ghcr.io/${{ github.repository_owner }}/otel-demo
 
 jobs:
   deploy-frontend:

@@ -1,6 +1,5 @@
 components:
   frontend:
-    enabled: true
     image:
-      repository: ghcr.io/sakethbolla/OpenTelemetry-Application-Deployment-in-EKS/frontend
+      repository: ghcr.io/sakethbolla/otel-demo/frontend
       tag: latest
