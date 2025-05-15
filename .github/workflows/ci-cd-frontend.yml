@@ -8,7 +8,7 @@ on:
 env:
   EKS_CLUSTER: otel-demo-cluster
   REGION: us-east-1
-  HELM_RELEASE: otel-demo-cicd
+  HELM_RELEASE: otel-demo
   NAMESPACE: otel-demo-helm
   REPO: ghcr.io/${{ github.repository_owner }}/otel-demo
 
