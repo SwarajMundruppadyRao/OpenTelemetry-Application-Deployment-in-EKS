@@ -37,7 +37,7 @@ jobs:
 
     - name: Debug IAM identity
       run: aws sts get-caller-identity
-      
+
     - name: Update kubeconfig and set KUBECONFIG
       run: |
         aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
@@ -48,6 +48,18 @@ jobs:
         kubectl get nodes
         helm version
 
+    - name: Clean up existing frontend deployment and stuck pods
+      run: |
+        echo "Deleting existing frontend deployment (if any)..."
+        kubectl delete deployment frontend -n $NAMESPACE || true
+
+        echo "Force deleting non-running frontend pods..."
+        kubectl get pods -n $NAMESPACE \
+          --field-selector=status.phase!=Running,status.phase!=Succeeded \
+          -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+          | grep '^frontend-' \
+          | xargs -r -I{} kubectl delete pod {} -n $NAMESPACE --grace-period=0 --force || true
+
     - name: Deploy frontend via Helm
       run: |
         helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts || true
@@ -57,7 +69,9 @@ jobs:
 
     - name: Patch frontend deployment to use GHCR image
       run: |
-        kubectl set image deployment/frontend frontend=$REPO/frontend:latest -n $NAMESPACE
+        kubectl patch deployment frontend -n $NAMESPACE \
+          --type='json' \
+          -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "'"$REPO/frontend:latest"'"}]'
 
     - name: Confirm frontend rollout
       run: |
