@@ -53,8 +53,11 @@ jobs:
         helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts || true
         helm repo update
         helm upgrade --install $HELM_RELEASE open-telemetry/opentelemetry-demo \
-          --namespace $NAMESPACE --create-namespace \
-          -f helm/values-prod.yaml
+          --namespace $NAMESPACE --create-namespace
+
+    - name: Patch frontend deployment to use GHCR image
+      run: |
+        kubectl set image deployment/frontend frontend=$REPO/frontend:latest -n $NAMESPACE
 
     - name: Confirm frontend rollout
       run: |
