@@ -1,5 +1,6 @@
 components:
   frontend:
+    enabled: true
     image:
       repository: ghcr.io/sakethbolla/otel-demo/frontend
       tag: latest
