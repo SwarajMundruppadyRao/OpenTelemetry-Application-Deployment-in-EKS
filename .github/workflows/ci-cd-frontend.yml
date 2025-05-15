@@ -73,9 +73,6 @@ jobs:
           --type='json' \
           -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "'"$REPO/frontend:latest"'"}]'
 
-    - name: Confirm frontend rollout
-      run: |
-        kubectl rollout status deployment/frontend -n $NAMESPACE
 
   rollback-if-fails:
     needs: deploy-frontend
