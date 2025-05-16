@@ -1,4 +1,4 @@
-name: CI/CD for OpenTelemetry Demo (frontend only)
+name: CI/CD for All OpenTelemetry Services
 
 on:
   push:
@@ -8,12 +8,39 @@ on:
 env:
   EKS_CLUSTER: otel-demo-cluster
   REGION: us-east-1
-  HELM_RELEASE: otel-demo
   NAMESPACE: otel-demo-helm
-  REPO: ghcr.io/${{ github.repository_owner }}/otel-demo
+  HELM_RELEASE: otel-demo
+  REPO_BASE: ghcr.io/${{ github.repository_owner }}/otel-demo
+  SERVICES: |
+    accounting
+    ad
+    cart
+    checkout
+    currency
+    email
+    flagd
+    flagd-ui
+    fraud-detection
+    frontend
+    frontend-proxy
+    grafana
+    image-provider
+    jaeger
+    kafka
+    load-generator
+    opensearch
+    otel-collector
+    payment
+    product-catalog
+    prometheus
+    quote
+    recommendation
+    shipping
+    valkey-cart
+    react-native-app
 
 jobs:
-  deploy-frontend:
+  build-deploy-patch:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,79 +54,45 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.REGION }}
 
-    - name: Log in to GHCR
+    - name: Login to GHCR
       run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-    - name: Build and push frontend image
-      run: |
-        docker build -t $REPO/frontend:latest ./src/frontend
-        docker push $REPO/frontend:latest
-
-    - name: Debug IAM identity
-      run: aws sts get-caller-identity
 
     - name: Update kubeconfig and set KUBECONFIG
       run: |
         aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
         echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
 
-    - name: Validate cluster connectivity
+    - name: Clean up failed or non-running service pods
       run: |
-        kubectl get nodes
-        helm version
-
-    - name: Clean up existing frontend deployment and stuck pods
-      run: |
-        echo "Deleting existing frontend deployment (if any)..."
-        kubectl delete deployment frontend -n $NAMESPACE || true
-
-        echo "Force deleting non-running frontend pods..."
+        echo "Cleaning non-running service pods..."
         kubectl get pods -n $NAMESPACE \
           --field-selector=status.phase!=Running,status.phase!=Succeeded \
           -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-          | grep '^frontend-' \
+          | grep -E '^('$(echo $SERVICES | tr ' ' '|')')-' \
           | xargs -r -I{} kubectl delete pod {} -n $NAMESPACE --grace-period=0 --force || true
 
-    - name: Deploy frontend via Helm
+    - name: Loop through services Build, push, patch
       run: |
-        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts || true
-        helm repo update
-        helm upgrade --install $HELM_RELEASE open-telemetry/opentelemetry-demo \
-          --namespace $NAMESPACE --create-namespace
+        for SERVICE in $SERVICES; do
+          echo "🔧 Processing $SERVICE"
 
-    - name: Patch frontend deployment to use GHCR image
-      run: |
-        kubectl patch deployment frontend -n $NAMESPACE \
-          --type='json' \
-          -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "'"$REPO/frontend:latest"'"}]'
+          IMAGE="$REPO_BASE/$SERVICE:latest"
+          SRC_DIR="./src/$SERVICE"
 
+          if [ ! -f "$SRC_DIR/Dockerfile" ]; then
+            echo " Skipping $SERVICE Dockerfile not found in $SRC_DIR"
+            continue
+          fi
 
-  rollback-if-fails:
-    needs: deploy-frontend
-    if: failure()
-    runs-on: ubuntu-latest
+          echo "Building $IMAGE..."
+          docker build -t $IMAGE $SRC_DIR
 
-    steps:
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.REGION }}
+          echo " Pushing $IMAGE..."
+          docker push $IMAGE
 
-    - name: Update kubeconfig and set KUBECONFIG
-      run: |
-        aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
-        echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-
-    - name: Add Helm repo (context needed for rollback)
-      run: |
-        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts || true
-        helm repo update
-
-    - name: Rollback frontend Helm release
-      run: |
-        echo "Checking Helm history for previous revision..."
-        REV=$(helm history $HELM_RELEASE -n $NAMESPACE | awk 'NR==3{print $1}')
-        echo "Rolling back to revision $REV"
-        helm rollback $HELM_RELEASE $REV -n $NAMESPACE || echo "Rollback failed or no previous revision"
+          echo " Patching deployment for $SERVICE..."
+          kubectl patch deployment $SERVICE -n $NAMESPACE \
+            --type='json' \
+            -p="[{'op': 'replace', 'path': '/spec/template/spec/containers/0/image', 'value': '$IMAGE'}]" \
+            || echo "Deployment $SERVICE not found or patch failed"
+        done
