@@ -71,28 +71,28 @@ jobs:
           | grep -E '^('$(echo $SERVICES | tr ' ' '|')')-' \
           | xargs -r -I{} kubectl delete pod {} -n $NAMESPACE --grace-period=0 --force || true
 
-    - name: Loop through services Build, push, patch
+    - name: Loop through services Build with full context, push, patch
       run: |
         for SERVICE in $SERVICES; do
           echo "🔧 Processing $SERVICE"
 
           IMAGE="$REPO_BASE/$SERVICE:latest"
-          SRC_DIR="./src/$SERVICE"
+          DOCKERFILE="./src/$SERVICE/Dockerfile"
 
-          if [ ! -f "$SRC_DIR/Dockerfile" ]; then
-            echo " Skipping $SERVICE Dockerfile not found in $SRC_DIR"
+          if [ ! -f "$DOCKERFILE" ]; then
+            echo "❌ Skipping $SERVICE – Dockerfile not found at $DOCKERFILE"
             continue
           fi
 
-          echo "Building $IMAGE..."
-          docker build -t $IMAGE $SRC_DIR
+          echo "📦 Building $IMAGE..."
+          docker build -t $IMAGE -f $DOCKERFILE .
 
-          echo " Pushing $IMAGE..."
+          echo "🚀 Pushing $IMAGE..."
           docker push $IMAGE
 
-          echo " Patching deployment for $SERVICE..."
+          echo "🩹 Patching deployment for $SERVICE..."
           kubectl patch deployment $SERVICE -n $NAMESPACE \
             --type='json' \
             -p="[{'op': 'replace', 'path': '/spec/template/spec/containers/0/image', 'value': '$IMAGE'}]" \
-            || echo "Deployment $SERVICE not found or patch failed"
+            || echo "⚠️ Deployment $SERVICE not found or patch failed"
         done
