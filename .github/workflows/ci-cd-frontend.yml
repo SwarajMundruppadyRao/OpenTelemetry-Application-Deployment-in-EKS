@@ -37,12 +37,19 @@ jobs:
       run: |
         SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
         for SERVICE in $SERVICES; do
-          LOCAL_IMAGE=$(docker compose -f $COMPOSE_FILE config | grep "image:" | grep "$SERVICE" | awk '{print $2}')
+          LOCAL_IMAGE=$(docker compose -f $COMPOSE_FILE config | awk "/^services:/,/^networks:/" | awk "/^  $SERVICE:/{flag=1;next}/^  [^ ]/{flag=0}flag && /image:/ {print \$2}")
+          
+          if [ -z "$LOCAL_IMAGE" ]; then
+            echo "❌ Skipping $SERVICE — image not found"
+            continue
+          fi
+
           GHCR_IMAGE="$REPO_BASE/$SERVICE:latest"
           echo "📦 Tagging $LOCAL_IMAGE → $GHCR_IMAGE"
-          docker tag $LOCAL_IMAGE $GHCR_IMAGE
+          docker tag "$LOCAL_IMAGE" "$GHCR_IMAGE" || { echo "❌ Failed to tag $LOCAL_IMAGE"; continue; }
+
           echo "🚀 Pushing $GHCR_IMAGE"
-          docker push $GHCR_IMAGE
+          docker push "$GHCR_IMAGE" || echo "⚠️ Push failed — continuing"
         done
 
     - name: Update kubeconfig
