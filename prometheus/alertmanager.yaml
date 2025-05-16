@@ -2,7 +2,7 @@ global:
   smtp_smarthost: 'smtp.gmail.com:587'
   smtp_from: 'f.shaker02@gmail.com'
   smtp_auth_username: 'f.shaker02@gmail.com'
-  smtp_auth_password: 'your_16_char_app_password'  # Replace with a valid Gmail App Password
+  smtp_auth_password: 'rvuohtjbtdxwpzru'
 
 route:
   receiver: gmail-alerts
@@ -14,5 +14,5 @@ route:
 receivers:
   - name: gmail-alerts
     email_configs:
-      - to: 'f.shaker02@gmail.com'
+      - to: 'shaker.55@outlook.com'
         send_resolved: true
