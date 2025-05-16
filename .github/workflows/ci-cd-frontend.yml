@@ -1,4 +1,4 @@
-name: CI/CD for All OpenTelemetry Services
+name: CI/CD using Docker Compose
 
 on:
   push:
@@ -9,38 +9,11 @@ env:
   EKS_CLUSTER: otel-demo-cluster
   REGION: us-east-1
   NAMESPACE: otel-demo-helm
-  HELM_RELEASE: otel-demo
   REPO_BASE: ghcr.io/${{ github.repository_owner }}/otel-demo
-  SERVICES: |
-    accounting
-    ad
-    cart
-    checkout
-    currency
-    email
-    flagd
-    flagd-ui
-    fraud-detection
-    frontend
-    frontend-proxy
-    grafana
-    image-provider
-    jaeger
-    kafka
-    load-generator
-    opensearch
-    otel-collector
-    payment
-    product-catalog
-    prometheus
-    quote
-    recommendation
-    shipping
-    valkey-cart
-    react-native-app
+  COMPOSE_FILE: docker-compose.yml
 
 jobs:
-  build-deploy-patch:
+  build-push-patch:
     runs-on: ubuntu-latest
 
     steps:
@@ -54,45 +27,36 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.REGION }}
 
-    - name: Login to GHCR
+    - name: Log in to GHCR
       run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Update kubeconfig and set KUBECONFIG
+    - name: Build all images with Docker Compose
+      run: docker compose -f $COMPOSE_FILE build
+
+    - name: Tag and push each service to GHCR
+      run: |
+        SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
+        for SERVICE in $SERVICES; do
+          LOCAL_IMAGE=$(docker compose -f $COMPOSE_FILE config | grep "image:" | grep "$SERVICE" | awk '{print $2}')
+          GHCR_IMAGE="$REPO_BASE/$SERVICE:latest"
+          echo "📦 Tagging $LOCAL_IMAGE → $GHCR_IMAGE"
+          docker tag $LOCAL_IMAGE $GHCR_IMAGE
+          echo "🚀 Pushing $GHCR_IMAGE"
+          docker push $GHCR_IMAGE
+        done
+
+    - name: Update kubeconfig
       run: |
         aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
         echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
 
-    - name: Clean up failed or non-running service pods
+    - name: Patch deployments in EKS with new GHCR images
       run: |
-        echo "Cleaning non-running service pods..."
-        kubectl get pods -n $NAMESPACE \
-          --field-selector=status.phase!=Running,status.phase!=Succeeded \
-          -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-          | grep -E '^('$(echo $SERVICES | tr ' ' '|')')-' \
-          | xargs -r -I{} kubectl delete pod {} -n $NAMESPACE --grace-period=0 --force || true
-
-    - name: Loop through services Build with full context, push, patch
-      run: |
-        for SERVICE in $SERVICES; do
-          echo "🔧 Processing $SERVICE"
-
+        for SERVICE in $(docker compose -f $COMPOSE_FILE config --services); do
           IMAGE="$REPO_BASE/$SERVICE:latest"
-          DOCKERFILE="./src/$SERVICE/Dockerfile"
-
-          if [ ! -f "$DOCKERFILE" ]; then
-            echo "❌ Skipping $SERVICE – Dockerfile not found at $DOCKERFILE"
-            continue
-          fi
-
-          echo "📦 Building $IMAGE..."
-          docker build -t $IMAGE -f $DOCKERFILE .
-
-          echo "🚀 Pushing $IMAGE..."
-          docker push $IMAGE
-
-          echo "🩹 Patching deployment for $SERVICE..."
+          echo "🩹 Patching $SERVICE with $IMAGE"
           kubectl patch deployment $SERVICE -n $NAMESPACE \
             --type='json' \
             -p="[{'op': 'replace', 'path': '/spec/template/spec/containers/0/image', 'value': '$IMAGE'}]" \
-            || echo "⚠️ Deployment $SERVICE not found or patch failed"
+            || echo "⚠️ Failed to patch $SERVICE (may not exist)"
         done

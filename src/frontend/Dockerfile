@@ -8,36 +8,33 @@ USER node
 
 WORKDIR /app
 
-# We're now in src/frontend as build context
-COPY package*.json ./
+COPY ./src/frontend/package*.json ./
 RUN npm clean-install --no-audit --no-progress
-
-COPY protos ./protos
-COPY . .
+COPY ./src/frontend/protos ./protos
+COPY ./src/frontend .
 
 RUN npm run build
-
 
 FROM node:22-alpine AS deps
 
 USER node
-WORKDIR /app
 
+WORKDIR /app
 COPY --chown=node:node --from=builder /home/node/.npm/ /home/node/.npm/
-COPY package*.json ./
+COPY ./src/frontend/package*.json ./
 RUN NODE_ENV=production npm clean-install --prefer-offline --no-audit --no-progress
 
 
 FROM node:22-alpine AS runner
-
 WORKDIR /app
+
 ENV NODE_ENV=production
 
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
 COPY --from=builder /app/next.config.js ./
-COPY --from=builder /app/utils/telemetry/Instrumentation.js ./utils/telemetry/Instrumentation.js
+COPY --from=builder /app/utils/telemetry/Instrumentation.js ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=deps /app/node_modules ./node_modules
@@ -51,3 +48,4 @@ ENV PORT=8080
 EXPOSE ${PORT}
 
 ENTRYPOINT ["npm", "start"]
+
