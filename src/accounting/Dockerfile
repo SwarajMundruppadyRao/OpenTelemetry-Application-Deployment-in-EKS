@@ -4,12 +4,15 @@
 FROM --platform=${BUILDPLATFORM} mcr.microsoft.com/dotnet/sdk:8.0 AS builder
 ARG TARGETARCH
 ARG BUILD_CONFIGURATION=Release
+
 WORKDIR /src
-COPY ["/src/accounting/", "Accounting/"]
-COPY ["/pb/demo.proto", "Accounting/proto/"]
+
+# ✅ Use relative paths from root context
+COPY src/accounting/ Accounting/
+COPY pb/demo.proto Accounting/proto/
+
 RUN dotnet restore "./Accounting/Accounting.csproj" -r linux-$TARGETARCH
 WORKDIR "/src/Accounting"
-
 RUN dotnet build "./Accounting.csproj" -r linux-$TARGETARCH -c $BUILD_CONFIGURATION -o /app/build
 
 # -----------------------------------------------------------------------------
