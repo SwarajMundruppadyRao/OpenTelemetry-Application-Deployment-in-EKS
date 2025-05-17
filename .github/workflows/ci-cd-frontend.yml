@@ -30,10 +30,18 @@ jobs:
     - name: Log in to GHCR
       run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Build and push images to GHCR
+    - name: Build and push images to GHCR (skipping external services)
       run: |
+        # List of services to skip (third-party or not buildable)
+        SKIP_SERVICES=("jaeger" "redis" "mongo" "otel-collector")
+
         SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
         for SERVICE in $SERVICES; do
+          if [[ " ${SKIP_SERVICES[@]} " =~ " ${SERVICE} " ]]; then
+            echo "Skipping external or unmanaged service: $SERVICE"
+            continue
+          fi
+
           docker compose -f $COMPOSE_FILE build $SERVICE
           docker tag $SERVICE $REPO_BASE/$SERVICE:latest
           docker push $REPO_BASE/$SERVICE:latest
@@ -53,6 +61,6 @@ jobs:
         helm upgrade --install otel-ghcr ./helm-chart \
           --namespace $NAMESPACE \
           --create-namespace
-          
+
     - name: Verify deployment
       run: kubectl get pods -n $NAMESPACE
