@@ -30,18 +30,20 @@ jobs:
     - name: Log in to GHCR
       run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Build and push images to GHCR (skipping external services)
+    - name: Build and push images to GHCR
       run: |
-        # List of services to skip (third-party or not buildable)
-        SKIP_SERVICES=("jaeger" "redis" "mongo" "otel-collector")
-
         SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
+
         for SERVICE in $SERVICES; do
-          if [[ " ${SKIP_SERVICES[@]} " =~ " ${SERVICE} " ]]; then
-            echo "Skipping external or unmanaged service: $SERVICE"
+          # Check if the service has a build section using docker-compose config
+          HAS_BUILD=$(docker compose -f $COMPOSE_FILE config | awk "/^services:/,/^networks:/" | awk "/^  $SERVICE:/{flag=1;next}/^  [^ ]/{flag=0}flag && /build:/ {print \$1}" | wc -l)
+
+          if [ "$HAS_BUILD" -eq 0 ]; then
+            echo "Skipping $SERVICE — no build section (likely third-party or prebuilt)"
             continue
           fi
 
+          echo "Building and pushing $SERVICE"
           docker compose -f $COMPOSE_FILE build $SERVICE
           docker tag $SERVICE $REPO_BASE/$SERVICE:latest
           docker push $REPO_BASE/$SERVICE:latest
