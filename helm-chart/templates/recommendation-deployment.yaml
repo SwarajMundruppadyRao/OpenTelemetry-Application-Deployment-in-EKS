@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation
+  labels:
+    app: recommendation
+spec:
+  replicas: { .Values.replicaCount }
+  selector:
+    matchLabels:
+      app: recommendation
+  template:
+    metadata:
+      labels:
+        app: recommendation
+    spec:
+      containers:
+        - name: recommendation
+          image: "{{ .Values.images.recommendation.repository }}:{{ .Values.images.recommendation.tag }}"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent

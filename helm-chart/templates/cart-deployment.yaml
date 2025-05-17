@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart
+  labels:
+    app: cart
+spec:
+  replicas: { .Values.replicaCount }
+  selector:
+    matchLabels:
+      app: cart
+  template:
+    metadata:
+      labels:
+        app: cart
+    spec:
+      containers:
+        - name: cart
+          image: "{{ .Values.images.cart.repository }}:{{ .Values.images.cart.tag }}"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent

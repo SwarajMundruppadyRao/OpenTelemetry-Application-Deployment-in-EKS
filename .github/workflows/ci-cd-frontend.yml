@@ -1,4 +1,4 @@
-name: CI/CD using Docker Compose
+name: CI/CD using Docker Compose and Helm
 
 on:
   push:
@@ -8,12 +8,12 @@ on:
 env:
   EKS_CLUSTER: otel-demo-cluster
   REGION: us-east-1
-  NAMESPACE: otel-demo-helm
+  NAMESPACE: otel-demo-ci-cd
   REPO_BASE: ghcr.io/${{ github.repository_owner }}/otel-demo
   COMPOSE_FILE: docker-compose.yml
 
 jobs:
-  build-push-patch:
+  build-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,26 +30,13 @@ jobs:
     - name: Log in to GHCR
       run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Build all images with Docker Compose
-      run: docker compose -f $COMPOSE_FILE build
-
-    - name: Tag and push each service to GHCR
+    - name: Build and push images to GHCR
       run: |
         SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
         for SERVICE in $SERVICES; do
-          LOCAL_IMAGE=$(docker compose -f $COMPOSE_FILE config | awk "/^services:/,/^networks:/" | awk "/^  $SERVICE:/{flag=1;next}/^  [^ ]/{flag=0}flag && /image:/ {print \$2}")
-          
-          if [ -z "$LOCAL_IMAGE" ]; then
-            echo "❌ Skipping $SERVICE — image not found"
-            continue
-          fi
-
-          GHCR_IMAGE="$REPO_BASE/$SERVICE:latest"
-          echo "📦 Tagging $LOCAL_IMAGE → $GHCR_IMAGE"
-          docker tag "$LOCAL_IMAGE" "$GHCR_IMAGE" || { echo "❌ Failed to tag $LOCAL_IMAGE"; continue; }
-
-          echo "🚀 Pushing $GHCR_IMAGE"
-          docker push "$GHCR_IMAGE" || echo "⚠️ Push failed — continuing"
+          docker compose -f $COMPOSE_FILE build $SERVICE
+          docker tag $SERVICE $REPO_BASE/$SERVICE:latest
+          docker push $REPO_BASE/$SERVICE:latest
         done
 
     - name: Update kubeconfig
@@ -57,13 +44,15 @@ jobs:
         aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
         echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
 
-    - name: Patch deployments in EKS with new GHCR images
+    - name: Create namespace if not exists
       run: |
-        for SERVICE in $(docker compose -f $COMPOSE_FILE config --services); do
-          IMAGE="$REPO_BASE/$SERVICE:latest"
-          echo "🩹 Patching $SERVICE with $IMAGE"
-          kubectl patch deployment $SERVICE -n $NAMESPACE \
-            --type='json' \
-            -p="[{'op': 'replace', 'path': '/spec/template/spec/containers/0/image', 'value': '$IMAGE'}]" \
-            || echo "⚠️ Failed to patch $SERVICE (may not exist)"
-        done
+        kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
+
+    - name: Deploy using Helm
+      run: |
+        helm upgrade --install otel-ghcr ./helm-chart \
+          --namespace $NAMESPACE \
+          --create-namespace
+          
+    - name: Verify deployment
+      run: kubectl get pods -n $NAMESPACE

@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ad
+  labels:
+    app: ad
+spec:
+  replicas: { .Values.replicaCount }
+  selector:
+    matchLabels:
+      app: ad
+  template:
+    metadata:
+      labels:
+        app: ad
+    spec:
+      containers:
+        - name: ad
+          image: "{{ .Values.images.ad.repository }}:{{ .Values.images.ad.tag }}"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent

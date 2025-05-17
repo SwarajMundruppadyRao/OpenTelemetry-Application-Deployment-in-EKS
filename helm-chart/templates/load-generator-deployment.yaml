@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  labels:
+    app: load-generator
+spec:
+  replicas: { .Values.replicaCount }
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      containers:
+        - name: load-generator
+          image: "{{ .Values.images.load-generator.repository }}:{{ .Values.images.load-generator.tag }}"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent

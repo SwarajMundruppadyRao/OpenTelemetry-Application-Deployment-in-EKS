@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-detection
+  labels:
+    app: fraud-detection
+spec:
+  replicas: { .Values.replicaCount }
+  selector:
+    matchLabels:
+      app: fraud-detection
+  template:
+    metadata:
+      labels:
+        app: fraud-detection
+    spec:
+      containers:
+        - name: fraud-detection
+          image: "{{ .Values.images.fraud-detection.repository }}:{{ .Values.images.fraud-detection.tag }}"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent

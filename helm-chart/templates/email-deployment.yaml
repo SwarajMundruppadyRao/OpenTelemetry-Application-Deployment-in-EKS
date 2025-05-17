@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email
+  labels:
+    app: email
+spec:
+  replicas: { .Values.replicaCount }
+  selector:
+    matchLabels:
+      app: email
+  template:
+    metadata:
+      labels:
+        app: email
+    spec:
+      containers:
+        - name: email
+          image: "{{ .Values.images.email.repository }}:{{ .Values.images.email.tag }}"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent

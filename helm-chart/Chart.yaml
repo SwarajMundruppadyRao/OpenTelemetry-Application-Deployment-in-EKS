@@ -1,0 +1,4 @@
+apiVersion: v2
+name: otel-demo-ci-cd
+description: Helm chart for OpenTelemetry Demo deployed with GHCR images
+version: 0.1.0

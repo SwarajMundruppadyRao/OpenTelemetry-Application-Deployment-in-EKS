@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping
+  labels:
+    app: shipping
+spec:
+  replicas: { .Values.replicaCount }
+  selector:
+    matchLabels:
+      app: shipping
+  template:
+    metadata:
+      labels:
+        app: shipping
+    spec:
+      containers:
+        - name: shipping
+          image: "{{ .Values.images.shipping.repository }}:{{ .Values.images.shipping.tag }}"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent

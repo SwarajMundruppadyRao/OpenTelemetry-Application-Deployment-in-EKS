@@ -1,0 +1,57 @@
+replicaCount: 1
+
+images:
+  email:
+    repository: ghcr.io/sakethbolla/otel-demo/email
+    tag: latest
+  quote:
+    repository: ghcr.io/sakethbolla/otel-demo/quote
+    tag: latest
+  cart:
+    repository: ghcr.io/sakethbolla/otel-demo/cart
+    tag: latest
+  flagd-ui:
+    repository: ghcr.io/sakethbolla/otel-demo/flagd-ui
+    tag: latest
+  frontend-proxy:
+    repository: ghcr.io/sakethbolla/otel-demo/frontend-proxy
+    tag: latest
+  accounting:
+    repository: ghcr.io/sakethbolla/otel-demo/accounting
+    tag: latest
+  shipping:
+    repository: ghcr.io/sakethbolla/otel-demo/shipping
+    tag: latest
+  ad:
+    repository: ghcr.io/sakethbolla/otel-demo/ad
+    tag: latest
+  currency:
+    repository: ghcr.io/sakethbolla/otel-demo/currency
+    tag: latest
+  kafka:
+    repository: ghcr.io/sakethbolla/otel-demo/kafka
+    tag: latest
+  product-catalog:
+    repository: ghcr.io/sakethbolla/otel-demo/product-catalog
+    tag: latest
+  image-provider:
+    repository: ghcr.io/sakethbolla/otel-demo/image-provider
+    tag: latest
+  recommendation:
+    repository: ghcr.io/sakethbolla/otel-demo/recommendation
+    tag: latest
+  fraud-detection:
+    repository: ghcr.io/sakethbolla/otel-demo/fraud-detection
+    tag: latest
+  checkout:
+    repository: ghcr.io/sakethbolla/otel-demo/checkout
+    tag: latest
+  payment:
+    repository: ghcr.io/sakethbolla/otel-demo/payment
+    tag: latest
+  load-generator:
+    repository: ghcr.io/sakethbolla/otel-demo/load-generator
+    tag: latest
+  frontend:
+    repository: ghcr.io/sakethbolla/otel-demo/frontend
+    tag: latest

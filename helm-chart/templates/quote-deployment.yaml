@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quote
+  labels:
+    app: quote
+spec:
+  replicas: { .Values.replicaCount }
+  selector:
+    matchLabels:
+      app: quote
+  template:
+    metadata:
+      labels:
+        app: quote
+    spec:
+      containers:
+        - name: quote
+          image: "{{ .Values.images.quote.repository }}:{{ .Values.images.quote.tag }}"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent

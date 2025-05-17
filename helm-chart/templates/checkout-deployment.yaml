@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  labels:
+    app: checkout
+spec:
+  replicas: { .Values.replicaCount }
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      containers:
+        - name: checkout
+          image: "{{ .Values.images.checkout.repository }}:{{ .Values.images.checkout.tag }}"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent
