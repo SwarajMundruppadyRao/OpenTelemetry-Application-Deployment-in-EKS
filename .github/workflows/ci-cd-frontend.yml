@@ -30,9 +30,6 @@ jobs:
     - name: Log in to GHCR
       run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Test access to cluster
-      run: kubectl get nodes
-
 
     # - name: Build and push images to GHCR (dynamic build check)
     #   run: |
@@ -69,6 +66,9 @@ jobs:
       run: |
         aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
         echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+
+    - name: Test access to cluster
+      run: kubectl get nodes
 
     - name: Create namespace if not exists
       run: |
