@@ -5,7 +5,7 @@ metadata:
   labels:
     app: flagd-ui
 spec:
-  replicas: { .Values.replicaCount }
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: flagd-ui
@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: flagd-ui
-          image: "{{ .Values.images.flagd-ui.repository }}:{{ .Values.images.flagd-ui.tag }}"
+          {{ $img := index .Values.images "flagd-ui" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-          imagePullPolicy: IfNotPresent

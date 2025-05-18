@@ -5,7 +5,7 @@ metadata:
   labels:
     app: cart
 spec:
-  replicas: { .Values.replicaCount }
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: cart
@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: cart
-          image: "{{ .Values.images.cart.repository }}:{{ .Values.images.cart.tag }}"
+          {{ $img := index .Values.images "cart" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-          imagePullPolicy: IfNotPresent

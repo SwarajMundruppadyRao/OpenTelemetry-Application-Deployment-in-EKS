@@ -5,7 +5,7 @@ metadata:
   labels:
     app: quote
 spec:
-  replicas: { .Values.replicaCount }
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: quote
@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: quote
-          image: "{{ .Values.images.quote.repository }}:{{ .Values.images.quote.tag }}"
+          {{ $img := index .Values.images "quote" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-          imagePullPolicy: IfNotPresent

@@ -5,7 +5,7 @@ metadata:
   labels:
     app: kafka
 spec:
-  replicas: { .Values.replicaCount }
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: kafka
@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: kafka
-          image: "{{ .Values.images.kafka.repository }}:{{ .Values.images.kafka.tag }}"
+          {{ $img := index .Values.images "kafka" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-          imagePullPolicy: IfNotPresent

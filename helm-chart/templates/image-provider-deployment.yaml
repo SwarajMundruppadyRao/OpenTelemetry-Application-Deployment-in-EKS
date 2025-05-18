@@ -5,7 +5,7 @@ metadata:
   labels:
     app: image-provider
 spec:
-  replicas: { .Values.replicaCount }
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: image-provider
@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: image-provider
-          image: "{{ .Values.images.image-provider.repository }}:{{ .Values.images.image-provider.tag }}"
+          {{ $img := index .Values.images "image-provider" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-          imagePullPolicy: IfNotPresent

@@ -5,7 +5,7 @@ metadata:
   labels:
     app: currency
 spec:
-  replicas: { .Values.replicaCount }
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: currency
@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: currency
-          image: "{{ .Values.images.currency.repository }}:{{ .Values.images.currency.tag }}"
+          {{ $img := index .Values.images "currency" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-          imagePullPolicy: IfNotPresent

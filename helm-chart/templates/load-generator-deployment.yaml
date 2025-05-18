@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: load-generator
-          {{- $img := index .Values.images "load-generator" }}
+          {{ $img := index .Values.images "load-generator" }}
           image: "{{ $img.repository }}:{{ $img.tag }}"
           imagePullPolicy: IfNotPresent
           ports:
