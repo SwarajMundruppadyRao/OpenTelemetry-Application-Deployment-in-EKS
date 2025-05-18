@@ -31,7 +31,7 @@ jobs:
       run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
 
-    # - name: Build and push images to GHCR (dynamic build check)
+    # - name: Build and push images to GHCR
     #   run: |
     #     SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
 
