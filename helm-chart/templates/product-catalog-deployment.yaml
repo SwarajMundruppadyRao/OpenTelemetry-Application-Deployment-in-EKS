@@ -1,9 +1,3 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: product-catalog
-  labels:
-    app: product-catalog
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
