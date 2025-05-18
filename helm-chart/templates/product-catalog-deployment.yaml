@@ -10,7 +10,8 @@ spec:
     spec:
       containers:
         - name: product-catalog
-          image: "{{ .Values.images.product-catalog.repository }}:{{ .Values.images.product-catalog.tag }}"
+          {{- $img := index .Values.images "product-catalog" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-              imagePullPolicy: IfNotPresent
