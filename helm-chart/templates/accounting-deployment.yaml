@@ -18,8 +18,11 @@ spec:
         - name: ghcr-creds
       containers:
         - name: accounting
-          {{ $img := index .Values.images "accounting" }}
+          {{- $img := index .Values.images "accounting" }}
           image: "{{ $img.repository }}:{{ $img.tag }}"
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
+          env:
+            - name: KAFKA_ADDR
+              value: "kafka:8080"
