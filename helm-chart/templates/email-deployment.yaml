@@ -14,6 +14,8 @@ spec:
       labels:
         app: email
     spec:
+      imagePullSecrets:
+        - name: ghcr-creds
       containers:
         - name: email
           {{ $img := index .Values.images "email" }}

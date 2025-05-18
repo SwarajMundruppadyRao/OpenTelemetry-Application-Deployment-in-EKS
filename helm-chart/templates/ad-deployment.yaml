@@ -14,6 +14,8 @@ spec:
       labels:
         app: ad
     spec:
+      imagePullSecrets:
+        - name: ghcr-creds
       containers:
         - name: ad
           {{ $img := index .Values.images "ad" }}

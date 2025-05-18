@@ -14,6 +14,8 @@ spec:
       labels:
         app: recommendation
     spec:
+      imagePullSecrets:
+        - name: ghcr-creds
       containers:
         - name: recommendation
           {{ $img := index .Values.images "recommendation" }}

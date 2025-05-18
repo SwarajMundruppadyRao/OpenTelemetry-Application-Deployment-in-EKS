@@ -14,6 +14,8 @@ spec:
       labels:
         app: kafka
     spec:
+      imagePullSecrets:
+        - name: ghcr-creds
       containers:
         - name: kafka
           {{ $img := index .Values.images "kafka" }}

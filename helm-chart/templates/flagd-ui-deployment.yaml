@@ -14,6 +14,8 @@ spec:
       labels:
         app: flagd-ui
     spec:
+      imagePullSecrets:
+        - name: ghcr-creds
       containers:
         - name: flagd-ui
           {{ $img := index .Values.images "flagd-ui" }}
