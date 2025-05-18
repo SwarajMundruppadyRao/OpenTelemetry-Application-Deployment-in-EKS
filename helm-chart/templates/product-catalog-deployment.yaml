@@ -1,0 +1,16 @@
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: product-catalog
+  template:
+    metadata:
+      labels:
+        app: product-catalog
+    spec:
+      containers:
+        - name: product-catalog
+          image: "{{ .Values.images.product-catalog.repository }}:{{ .Values.images.product-catalog.tag }}"
+          ports:
+            - containerPort: 8080
+              imagePullPolicy: IfNotPresent
