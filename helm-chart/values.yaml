@@ -1,12 +1,22 @@
 commonEnv:
-  - name: KAFKA_ADDR
-    value: "kafka:8080"
-  - name: REDIS_ADDR
-    value: "redis:6379"
-  - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: "http://otel-collector:4317"
-  - name: VALKEY_ADDR
-    value: "redis:6379"
+- name: KAFKA_ADDR
+  value: kafka:8080
+- name: REDIS_ADDR
+  value: redis:6379
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: http://otel-collector:4317
+- name: VALKEY_ADDR
+  value: redis:6379
+- name: PRODUCT_CATALOG_ADDR
+  value: product-catalog:8080
+- name: CURRENCY_ADDR
+  value: currency:8080
+- name: EMAIL_SERVICE_ADDR
+  value: email:8080
+- name: PAYMENT_ADDR
+  value: payment:8080
+- name: SHIPPING_ADDR
+  value: shipping:8080
 images:
   accounting:
     repository: ghcr.io/sakethbolla/otel-demo/accounting
