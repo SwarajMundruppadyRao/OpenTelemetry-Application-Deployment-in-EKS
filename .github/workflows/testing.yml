@@ -1,5 +1,12 @@
+name: Testing Pipeline
+
 on:
   workflow_dispatch:
+
+env:
+  EKS_CLUSTER: otel-demo-cluster
+  REGION: us-east-1
+  REPO_BASE: ghcr.io/${{ github.repository_owner }}/otel-demo
 
 jobs:
   helm-test-and-smoke:
