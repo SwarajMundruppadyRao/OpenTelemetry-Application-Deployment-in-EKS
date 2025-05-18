@@ -21,5 +21,7 @@ spec:
           {{ $img := index .Values.images "quote" }}
           image: "{{ $img.repository }}:{{ $img.tag }}"
           imagePullPolicy: IfNotPresent
+          env:
+            {{ toYaml .Values.commonEnv | nindent 12 }}
           ports:
             - containerPort: 8080

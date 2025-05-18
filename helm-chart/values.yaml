@@ -1,3 +1,10 @@
+commonEnv:
+- name: KAFKA_ADDR
+  value: kafka:8080
+- name: REDIS_ADDR
+  value: redis:6379
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: http://otel-collector:4317
 images:
   accounting:
     repository: ghcr.io/sakethbolla/otel-demo/accounting
