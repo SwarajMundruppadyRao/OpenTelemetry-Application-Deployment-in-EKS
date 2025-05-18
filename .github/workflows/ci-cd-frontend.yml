@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      run_tests:
+        description: 'Run Helm and Smoke Tests manually'
+        required: false
+        default: 'false'
 
 env:
   EKS_CLUSTER: otel-demo-cluster
@@ -31,35 +37,35 @@ jobs:
       run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
 
-    # - name: Build and push images to GHCR
-    #   run: |
-    #     SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
+    - name: Build and push images to GHCR
+      run: |
+        SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
 
-    #     for SERVICE in $SERVICES; do
-    #       HAS_BUILD=$(docker compose -f $COMPOSE_FILE config | awk "/^services:/,/^networks:/" | awk "/^  $SERVICE:/{flag=1;next}/^  [^ ]/{flag=0}flag && /build:/ {print \$1}" | wc -l)
+        for SERVICE in $SERVICES; do
+          HAS_BUILD=$(docker compose -f $COMPOSE_FILE config | awk "/^services:/,/^networks:/" | awk "/^  $SERVICE:/{flag=1;next}/^  [^ ]/{flag=0}flag && /build:/ {print \$1}" | wc -l)
 
-    #       if [ "$HAS_BUILD" -eq 0 ]; then
-    #         echo "Skipping $SERVICE — no build section"
-    #         continue
-    #       fi
+          if [ "$HAS_BUILD" -eq 0 ]; then
+            echo "Skipping $SERVICE — no build section"
+            continue
+          fi
 
-    #       echo "Building service: $SERVICE"
-    #       docker compose -f $COMPOSE_FILE build $SERVICE
+          echo "Building service: $SERVICE"
+          docker compose -f $COMPOSE_FILE build $SERVICE
 
-    #       IMAGE_ID=$(docker images --filter "dangling=false" --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^$SERVICE(:latest)? " | awk '{print $2}')
+          IMAGE_ID=$(docker images --filter "dangling=false" --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^$SERVICE(:latest)? " | awk '{print $2}')
           
-    #       if [ -z "$IMAGE_ID" ]; then
-    #         echo "Could not resolve image ID for $SERVICE, skipping tag/push"
-    #         continue
-    #       fi
+          if [ -z "$IMAGE_ID" ]; then
+            echo "Could not resolve image ID for $SERVICE, skipping tag/push"
+            continue
+          fi
 
-    #       TARGET_IMAGE="$REPO_BASE/$SERVICE:latest"
-    #       echo "Tagging $IMAGE_ID as $TARGET_IMAGE"
-    #       docker tag "$IMAGE_ID" "$TARGET_IMAGE"
+          TARGET_IMAGE="$REPO_BASE/$SERVICE:latest"
+          echo "Tagging $IMAGE_ID as $TARGET_IMAGE"
+          docker tag "$IMAGE_ID" "$TARGET_IMAGE"
 
-    #       echo "Pushing $TARGET_IMAGE"
-    #       docker push "$TARGET_IMAGE"
-    #     done
+          echo "Pushing $TARGET_IMAGE"
+          docker push "$TARGET_IMAGE"
+        done
 
 
     - name: Update kubeconfig
@@ -70,7 +76,7 @@ jobs:
     - name: Test access to cluster
       run: kubectl get nodes
 
-    - name: Create namespace if not exists
+    - name: namespace check
       run: |
         kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
 
@@ -79,6 +85,55 @@ jobs:
         helm upgrade --install otel-ghcr ./helm-chart \
           --namespace $NAMESPACE \
           --create-namespace
+
+    - name: Capture current Helm revision
+      id: helm_revision
+      run: |
+        REVISION=$(helm history otel-ghcr -n $NAMESPACE --max 1 --output json | jq -r '.[0].revision')
+        echo "Previous revision is $REVISION"
+        echo "PREV_REVISION=$REVISION" >> $GITHUB_ENV
+
+    - name: Deploy using Helm
+      id: helm_upgrade
+      run: |
+        set -e
+        helm upgrade --install otel-ghcr ./helm-chart \
+          --namespace $NAMESPACE \
+          --create-namespace
+
+    - name: Wait for pods to be ready
+      id: check_pods
+      run: |
+        ATTEMPTS=0
+        until kubectl get pods -n $NAMESPACE | grep -v Completed | grep -qv "Running\|1/1"; do
+          echo "Pods still not ready..."
+          ATTEMPTS=$((ATTEMPTS + 1))
+          if [ $ATTEMPTS -ge 10 ]; then
+            echo "Timeout waiting for pods to be ready"
+            exit 1
+          fi
+          sleep 15
+        done
+        echo "Pods are ready"
+
+    - name: Rollback if deploy fails
+      if: failure()
+      run: |
+        echo "Deployment failed. Rolling back to previous revision $PREV_REVISION"
+        helm rollback otel-ghcr $PREV_REVISION -n $NAMESPACE
+
+    - name: Run Helm tests (manual only)
+      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_tests == 'true' }}
+      run: |
+        helm test otel-ghcr -n $NAMESPACE || echo "Helm tests failed"
+
+    - name: Port-forward and smoke test (manual only)
+      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_tests == 'true' }}
+      run: |
+        kubectl port-forward -n $NAMESPACE svc/frontend-proxy 8080:8080 &
+        sleep 10
+        curl -f http://localhost:8080 || (echo "Smoke test failed" && exit 1)
+
 
     - name: Verify deployment
       run: kubectl get pods -n $NAMESPACE
