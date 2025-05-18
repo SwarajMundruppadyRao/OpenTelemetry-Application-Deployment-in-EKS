@@ -122,18 +122,17 @@ jobs:
         echo "Deployment failed. Rolling back to previous revision $PREV_REVISION"
         helm rollback otel-ghcr $PREV_REVISION -n $NAMESPACE
 
-    - name: Run Helm tests (manual only)
+    - name: Run Helm tests (manual only for otel-demo-helm)
       if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_tests == 'true' }}
       run: |
-        helm test otel-ghcr -n $NAMESPACE || echo "Helm tests failed"
+        helm test otel-ghcr -n otel-demo-helm || echo "Helm tests failed"
 
-    - name: Port-forward and smoke test (manual only)
+    - name: Port-forward and smoke test (manual only for otel-demo-helm)
       if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_tests == 'true' }}
       run: |
-        kubectl port-forward -n $NAMESPACE svc/frontend-proxy 8080:8080 &
+        kubectl port-forward -n otel-demo-helm svc/frontend-proxy 8080:8080 &
         sleep 10
         curl -f http://localhost:8080 || (echo "Smoke test failed" && exit 1)
-
 
     - name: Verify deployment
       run: kubectl get pods -n $NAMESPACE
