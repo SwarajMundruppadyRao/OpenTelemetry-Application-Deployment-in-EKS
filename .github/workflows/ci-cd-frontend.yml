@@ -30,35 +30,39 @@ jobs:
     - name: Log in to GHCR
       run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Build and push images to GHCR (dynamic build check)
-      run: |
-        SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
+    - name: Test access to cluster
+      run: kubectl get nodes
 
-        for SERVICE in $SERVICES; do
-          HAS_BUILD=$(docker compose -f $COMPOSE_FILE config | awk "/^services:/,/^networks:/" | awk "/^  $SERVICE:/{flag=1;next}/^  [^ ]/{flag=0}flag && /build:/ {print \$1}" | wc -l)
 
-          if [ "$HAS_BUILD" -eq 0 ]; then
-            echo "Skipping $SERVICE — no build section"
-            continue
-          fi
+    # - name: Build and push images to GHCR (dynamic build check)
+    #   run: |
+    #     SERVICES=$(docker compose -f $COMPOSE_FILE config --services)
 
-          echo "Building service: $SERVICE"
-          docker compose -f $COMPOSE_FILE build $SERVICE
+    #     for SERVICE in $SERVICES; do
+    #       HAS_BUILD=$(docker compose -f $COMPOSE_FILE config | awk "/^services:/,/^networks:/" | awk "/^  $SERVICE:/{flag=1;next}/^  [^ ]/{flag=0}flag && /build:/ {print \$1}" | wc -l)
 
-          IMAGE_ID=$(docker images --filter "dangling=false" --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^$SERVICE(:latest)? " | awk '{print $2}')
+    #       if [ "$HAS_BUILD" -eq 0 ]; then
+    #         echo "Skipping $SERVICE — no build section"
+    #         continue
+    #       fi
+
+    #       echo "Building service: $SERVICE"
+    #       docker compose -f $COMPOSE_FILE build $SERVICE
+
+    #       IMAGE_ID=$(docker images --filter "dangling=false" --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^$SERVICE(:latest)? " | awk '{print $2}')
           
-          if [ -z "$IMAGE_ID" ]; then
-            echo "Could not resolve image ID for $SERVICE, skipping tag/push"
-            continue
-          fi
+    #       if [ -z "$IMAGE_ID" ]; then
+    #         echo "Could not resolve image ID for $SERVICE, skipping tag/push"
+    #         continue
+    #       fi
 
-          TARGET_IMAGE="$REPO_BASE/$SERVICE:latest"
-          echo "Tagging $IMAGE_ID as $TARGET_IMAGE"
-          docker tag "$IMAGE_ID" "$TARGET_IMAGE"
+    #       TARGET_IMAGE="$REPO_BASE/$SERVICE:latest"
+    #       echo "Tagging $IMAGE_ID as $TARGET_IMAGE"
+    #       docker tag "$IMAGE_ID" "$TARGET_IMAGE"
 
-          echo "Pushing $TARGET_IMAGE"
-          docker push "$TARGET_IMAGE"
-        done
+    #       echo "Pushing $TARGET_IMAGE"
+    #       docker push "$TARGET_IMAGE"
+    #     done
 
 
     - name: Update kubeconfig
