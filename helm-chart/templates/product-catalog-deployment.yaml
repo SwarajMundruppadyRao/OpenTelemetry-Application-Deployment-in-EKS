@@ -13,4 +13,4 @@ spec:
           image: "{{ .Values.images.product-catalog.repository }}:{{ .Values.images.product-catalog.tag }}"
           ports:
             - containerPort: 8080
-          imagePullPolicy: IfNotPresent
+              imagePullPolicy: IfNotPresent
