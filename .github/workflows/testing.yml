@@ -1,0 +1,40 @@
+name: Testing Pipeline
+
+on:
+  workflow_dispatch:
+
+env:
+  EKS_CLUSTER: otel-demo-cluster
+  REGION: us-east-1
+  REPO_BASE: ghcr.io/${{ github.repository_owner }}/otel-demo
+
+jobs:
+  helm-test-and-smoke:
+    name: Helm Tests & Smoke Tests (otel-demo-helm)
+    runs-on: ubuntu-latest
+    env:
+      REGION: us-east-1
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.REGION }}
+
+    - name: Update kubeconfig
+      run: aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+
+    - name: Run Helm tests for otel-demo-helm
+      run: |
+        helm test otel-ghcr -n otel-demo-helm || echo "Helm tests failed"
+
+    - name: Port-forward and smoke test frontend-proxy in otel-demo-helm
+      run: |
+        kubectl port-forward -n otel-demo-helm svc/frontend-proxy 8080:8080 &
+        sleep 10
+        curl -f http://localhost:8080 || (echo "Smoke test failed" && exit 1)

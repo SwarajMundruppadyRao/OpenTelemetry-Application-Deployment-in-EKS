@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-catalog
+  labels:
+    app: product-catalog
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: product-catalog
+  template:
+    metadata:
+      labels:
+        app: product-catalog
+    spec:
+      imagePullSecrets:
+        - name: ghcr-creds
+      containers:
+        - name: product-catalog
+          {{ $img := index .Values.images "product-catalog" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            {{ toYaml .Values.commonEnv | nindent 12 }}
+          ports:
+            - containerPort: 8080

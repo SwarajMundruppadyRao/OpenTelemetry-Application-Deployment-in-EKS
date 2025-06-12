@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  labels:
+    app: load-generator
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      imagePullSecrets:
+        - name: ghcr-creds
+      containers:
+        - name: load-generator
+          {{ $img := index .Values.images "load-generator" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            {{ toYaml .Values.commonEnv | nindent 12 }}
+          ports:
+            - containerPort: 8080

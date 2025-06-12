@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment
+  labels:
+    app: payment
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: payment
+  template:
+    metadata:
+      labels:
+        app: payment
+    spec:
+      imagePullSecrets:
+        - name: ghcr-creds
+      containers:
+        - name: payment
+          {{ $img := index .Values.images "payment" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            {{ toYaml .Values.commonEnv | nindent 12 }}
+          ports:
+            - containerPort: 8080

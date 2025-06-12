@@ -1,0 +1,75 @@
+commonEnv:
+- name: KAFKA_ADDR
+  value: kafka:8080
+- name: REDIS_ADDR
+  value: redis:6379
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: http://otel-collector:4317
+- name: VALKEY_ADDR
+  value: redis:6379
+- name: PRODUCT_CATALOG_ADDR
+  value: product-catalog:8080
+- name: CURRENCY_ADDR
+  value: currency:8080
+- name: EMAIL_SERVICE_ADDR
+  value: email:8080
+- name: PAYMENT_ADDR
+  value: payment:8080
+- name: SHIPPING_ADDR
+  value: shipping:8080
+images:
+  accounting:
+    repository: ghcr.io/sakethbolla/otel-demo/accounting
+    tag: latest
+  ad:
+    repository: ghcr.io/sakethbolla/otel-demo/ad
+    tag: latest
+  cart:
+    repository: ghcr.io/sakethbolla/otel-demo/cart
+    tag: latest
+  checkout:
+    repository: ghcr.io/sakethbolla/otel-demo/checkout
+    tag: latest
+  currency:
+    repository: ghcr.io/sakethbolla/otel-demo/currency
+    tag: latest
+  email:
+    repository: ghcr.io/sakethbolla/otel-demo/email
+    tag: latest
+  flagd-ui:
+    repository: ghcr.io/sakethbolla/otel-demo/flagd-ui
+    tag: latest
+  fraud-detection:
+    repository: ghcr.io/sakethbolla/otel-demo/fraud-detection
+    tag: latest
+  frontend:
+    repository: ghcr.io/sakethbolla/otel-demo/frontend
+    tag: latest
+  frontend-proxy:
+    repository: ghcr.io/sakethbolla/otel-demo/frontend-proxy
+    tag: latest
+  image-provider:
+    repository: ghcr.io/sakethbolla/otel-demo/image-provider
+    tag: latest
+  kafka:
+    repository: ghcr.io/sakethbolla/otel-demo/kafka
+    tag: latest
+  load-generator:
+    repository: ghcr.io/sakethbolla/otel-demo/load-generator
+    tag: latest
+  payment:
+    repository: ghcr.io/sakethbolla/otel-demo/payment
+    tag: latest
+  product-catalog:
+    repository: ghcr.io/sakethbolla/otel-demo/product-catalog
+    tag: latest
+  quote:
+    repository: ghcr.io/sakethbolla/otel-demo/quote
+    tag: latest
+  recommendation:
+    repository: ghcr.io/sakethbolla/otel-demo/recommendation
+    tag: latest
+  shipping:
+    repository: ghcr.io/sakethbolla/otel-demo/shipping
+    tag: latest
+replicaCount: 1

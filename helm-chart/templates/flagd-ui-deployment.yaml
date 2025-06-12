@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flagd-ui
+  labels:
+    app: flagd-ui
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: flagd-ui
+  template:
+    metadata:
+      labels:
+        app: flagd-ui
+    spec:
+      imagePullSecrets:
+        - name: ghcr-creds
+      containers:
+        - name: flagd-ui
+          {{ $img := index .Values.images "flagd-ui" }}
+          image: "{{ $img.repository }}:{{ $img.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            {{ toYaml .Values.commonEnv | nindent 12 }}
+          ports:
+            - containerPort: 8080
